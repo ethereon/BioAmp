@@ -15,6 +15,9 @@
 
 #include "AmpLink.h"
 #include "AmpProtocol.h"
+#include "BandpassFilters.h"
+#include "NotchFilters.h"
+#include <sstream>
 #include <assert.h>
 
 using namespace std;
@@ -32,8 +35,10 @@ using namespace xinverse;
 
 AmpLink::AmpLink() {
 
-  
-  
+
+  isConnected = false;
+
+  this->amp.beginSession();
 
 }
 
@@ -41,18 +46,22 @@ AmpLink::AmpLink() {
 
 AmpLink::~AmpLink() {
 
+  if(isConnected)
+    disconnect();
+
+  amp.endSession();
+  
 }
 
 //-----------------------------------------------------------------------------
 
-bool AmpLink::connect() {
+bool AmpLink::connect(int index) {
 
-  this->amp.beginSession();
+  if(!this->amp.openDeviceWithDescription(GUSBAMP_ID,index))
 
-  if(!this->amp.openDeviceWithDescription("g.USBamp"))
     return false;
-  //TODO: Check the hw version packet with the newer amp
 
+  isConnected = true;
   return true;
 
 }
@@ -61,7 +70,40 @@ bool AmpLink::connect() {
 
 void AmpLink::disconnect() {
 
-  this->amp.endSession();
+  assert(isConnected);
+
+  amp.closeDevice();
+  isConnected = false;
+
+}
+
+//-----------------------------------------------------------------------------
+
+
+void AmpLink::getAvailableAmps(vector<string>* devices, bool verbose) {
+
+  AmpLink ampLink;
+
+  if(verbose)
+    ampLink.setVerbosityLevel(3);
+  else
+    ampLink.setVerbosityLevel(0);
+
+  bool success = true;
+
+  for(int i=0;success;++i) {
+
+    success = ampLink.connect(i);
+
+    if(success) {
+
+      string ampSerial = ampLink.getSerial();
+      devices->push_back(ampSerial);
+      ampLink.disconnect();
+
+    }
+
+  }
 
 }
 
@@ -108,8 +150,6 @@ void AmpLink::start() {
 
   amp.sendControlTransfer(cmd);
 
-
-
 }
 
 //-----------------------------------------------------------------------------
@@ -141,7 +181,30 @@ void AmpLink::getData(void* buffer, unsigned int bufferLength) {
 
 //-----------------------------------------------------------------------------
 
-string AmpLink::getAmpSerial() {
+string AmpLink::getSerial() {
+
+  char buffer[AMP_GET_SERIAL_LENGTH];
+
+  cmd.request = AMP_GET_SERIAL_REQUEST;
+  cmd.value = 0;
+  cmd.length = AMP_GET_SERIAL_LENGTH;
+  cmd.data = buffer;
+  cmd.type = CX_IN;
+
+  amp.sendControlTransfer(cmd);
+
+  string serialPacket = string((const char*)&buffer);
+
+  string part, serial;
+  istringstream iss(serialPacket, istringstream::in);
+
+  iss >> part; //The first word should be a set of dashes. discard.
+  iss >> part; //This should be the version
+  iss >> serial; //This should be the actual serial number
+
+  serial +=" ( " + part + " )";
+
+  return serial;
 
 }
 
@@ -204,7 +267,7 @@ void AmpLink::setMode(AmpMode mode) {
 void AmpLink::setActiveChannels(char* channels,unsigned int count) {
 
 
-  assert(count>0 && count<16);
+  assert(count>0 && count<=16);
 
   cmd.request = AMP_SET_CHANNELS_REQUEST;
   cmd.value = 0;
@@ -223,13 +286,79 @@ void AmpLink::setTriggerLineEnabled(bool isEnabled) {
 
 
   cmd.request = AMP_SET_TRIGGER_LINE_ENABLED_REQUEST;
-  cmd.value = 0;
+  cmd.value = isEnabled;
   cmd.length = 0;
   cmd.data = NULL;
   cmd.type = CX_OUT;
 
   amp.sendControlTransfer(cmd);
+
+}
+
+//-----------------------------------------------------------------------------
+
+void AmpLink::setVerbosityLevel(int level) {
+
+  amp.setVerbosityLevel(level);
+
+}
+
+//-----------------------------------------------------------------------------
+
+const FilterSpec* AmpLink::getBandpassFilters() {
+
+  return bandpassFilters;
   
+}
+
+//-----------------------------------------------------------------------------
+
+const FilterSpec* AmpLink::getNotchFilters() {
+
+  return notchFilters;
+
+}
+
+//-----------------------------------------------------------------------------
+void AmpLink::setBandpass(int filterIndex, int channel) {
+
+  char* filterData = (char*)disableBandpass;
+
+  assert(filterIndex<BANDPASS_FILTER_COUNT);
+
+  if(filterIndex!=-1)
+    filterData = (char*)bandpassFilters[filterIndex].details;
+
+  cmd.request = AMP_SET_BANDPASS_REQUEST;
+  cmd.value = channel;
+  cmd.length = AMP_SET_BANDPASS_LENGTH;
+  cmd.data = filterData;
+  cmd.type = CX_OUT;
+
+  amp.sendControlTransfer(cmd);
 
 
 }
+
+//-----------------------------------------------------------------------------
+void AmpLink::setNotch(int filterIndex, int channel) {
+
+  char* filterData = (char*)disableNotch;
+
+  assert(filterIndex<NOTCH_FILTER_COUNT);
+
+  if(filterIndex!=-1)
+    filterData = (char*)notchFilters[filterIndex].details;
+
+  cmd.request = AMP_SET_NOTCH_REQUEST;
+  cmd.value = channel;
+  cmd.length = AMP_SET_NOTCH_LENGTH;
+  cmd.data = filterData;
+  cmd.type = CX_OUT;
+
+  amp.sendControlTransfer(cmd);
+
+}
+
+
+//-----------------------------------------------------------------------------

@@ -1,3 +1,16 @@
+/*
+================================================================
+
+	USB Access
+	
+	A general USB I/O class built on top of libusb
+	
+	Copyright (C) 2010 Saumitro Dasgupta.
+	This code is made available under the MIT License.
+	<http://www.opensource.org/licenses/mit-license.html>
+
+================================================================
+*/
 
 #ifndef __USB_ACCESS_H__
 #define __USB_ACCESS_H__
@@ -12,7 +25,7 @@ namespace xinverse {
 class UsbAccess {
 
 
- protected:
+ private:
 
   libusb_device **devices;
   libusb_context * context;
@@ -27,6 +40,10 @@ class UsbAccess {
   void openEpilogue();
   bool onSuccessfulOpen(libusb_device* dev);
 
+  int verbosityLevel;
+
+  void trace(const char* msg);
+
 
  public:
 
@@ -39,17 +56,16 @@ class UsbAccess {
 
   bool isConnected() const;
 
-  bool openDeviceWithDescription(std::string desc);
+  void setVerbosityLevel(int level);
+
+  bool openDeviceWithDescription(std::string desc, int index=0);
+  void devicesWithVidPid(uint16_t vId, uint16_t pid);
   void sendControlTransfer(const ControlTransfer& cx);
   void sendBulkTransfer(BulkTransfer& bx);
   void closeDevice();
 
   uint8_t getOutEndpoint() { return epOutAddress; }
   uint8_t getInEndpoint()  { return epInAddress; }
-  
-
-  
-  
 
 };
 

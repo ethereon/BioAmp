@@ -23,19 +23,12 @@ using namespace xinverse;
 
 //-----------------------------------------------------------------------------
 
-#ifndef NDEBUG
-#define TRACE(msg) cout << "[TRACE] " << msg << endl
-#else
-#define TRACE(msg)
-#endif
-
-//-----------------------------------------------------------------------------
-
 UsbAccess::UsbAccess() {
 
   this->devices = NULL;
   this->context = NULL;
   this->hDev = NULL;
+  this->verbosityLevel = 3;
 
 }
 
@@ -46,6 +39,16 @@ UsbAccess::~UsbAccess() {
 
   if(this->devices!=NULL)
     endSession();
+
+}
+
+//-----------------------------------------------------------------------------
+
+
+void UsbAccess::trace(const char* msg) {
+
+  if(verbosityLevel!=0)
+    cout << "[ UsbAccess ] \t" << msg << endl;
 
 }
 
@@ -63,10 +66,15 @@ void UsbAccess::beginSession() {
 
   assert(this->context==NULL);
 
-  if(libusb_init(&this->context)<0)
-    return; //ERROR HANDLE
+  if(libusb_init(&this->context)<0) {
 
-  libusb_set_debug(this->context, 3);
+    trace("Unable to establish a new libusb session!!");
+    return;
+
+  }
+
+  if(verbosityLevel>2)
+    libusb_set_debug(this->context, 3);
 
   
 }
@@ -92,11 +100,32 @@ void UsbAccess::endSession() {
 
 //-----------------------------------------------------------------------------
 
+void UsbAccess::setVerbosityLevel(int level) {
+
+  verbosityLevel = level;
+
+  //Bring into effect if session has started.
+
+  if(this->context!=NULL)
+    libusb_set_debug(this->context,level);
+
+
+}
+
+					    
+//-----------------------------------------------------------------------------
+
 void UsbAccess::openPrologue() {
 
   assert(devices==NULL && context!=NULL);
 
   deviceCount = libusb_get_device_list(this->context, &this->devices);
+
+  if(deviceCount==LIBUSB_ERROR_NO_MEM)
+    trace("Memory allocation error on attempting to get device list!!");
+
+  if(this->devices==NULL)
+    trace("Call to get device list failed!!");
 
   //libusb returns 1 extra because of null termination
   deviceCount--;
@@ -114,6 +143,9 @@ void UsbAccess::openEpilogue() {
 
 }
 
+//-----------------------------------------------------------------------------
+
+
 
 //-----------------------------------------------------------------------------
 
@@ -129,7 +161,7 @@ bool UsbAccess::onSuccessfulOpen(libusb_device* dev) {
   
   if(cfg==NULL) {
 
-    TRACE("HALT! Unable to acquire configuration descriptor!");
+    trace("HALT! Unable to acquire configuration descriptor!");
     return false;
     
   }
@@ -143,17 +175,17 @@ bool UsbAccess::onSuccessfulOpen(libusb_device* dev) {
 
   if(libusb_claim_interface(this->hDev,firstSetting->bInterfaceNumber)!=0) {
 
-    TRACE("HALT! Failed on attempting to claim interface!");
+    trace("HALT! Failed on attempting to claim interface!");
     return false;
 
   }
 
-  TRACE("Successfully claimed interface");
+  trace("Successfully claimed interface");
 
   this->epOutAddress=255;
   this->epInAddress=255;
 
-  TRACE("Discovering endpoint addresses...");
+  trace("Discovering endpoint addresses...");
 
   for(int i=0;i<firstSetting->bNumEndpoints;++i) {
 
@@ -170,7 +202,7 @@ bool UsbAccess::onSuccessfulOpen(libusb_device* dev) {
   assert(epOutAddress!=255);
   assert(epInAddress!=255);
 
-  TRACE("All endpoint addresses found.");
+  trace("All endpoint addresses found.");
 
   libusb_free_config_descriptor(cfg);
 
@@ -186,18 +218,18 @@ void UsbAccess::resolveKernelDriver() {
   
   if(libusb_kernel_driver_active(this->hDev,0) == 1) {
     
-    TRACE("Kerner driver detected! Attempting to detach it...");
+    trace("Kerner driver detected! Attempting to detach it...");
     
     if(libusb_detach_kernel_driver(this->hDev, 0) == 0) {
       
-      TRACE("Kernel driver successfully detached.");
+      trace("Kernel driver successfully detached.");
       
     }
     
   } else {
     
     
-    TRACE("No kernel driver detected. (It's a good thing).");
+    trace("No kernel driver detected. (It's a good thing).");
     
   }
   
@@ -206,7 +238,7 @@ void UsbAccess::resolveKernelDriver() {
 
 //-----------------------------------------------------------------------------
 
-bool UsbAccess::openDeviceWithDescription(std::string desc) {
+bool UsbAccess::openDeviceWithDescription(std::string desc, int index) {
 
 
   //Make sure no open device exists.
@@ -217,7 +249,7 @@ bool UsbAccess::openDeviceWithDescription(std::string desc) {
   unsigned char buffer[1024];
   libusb_device_descriptor descriptor;
 
-
+  int currentIndex=0;
     
   for(int i=0; i<this->deviceCount; ++i) {
 
@@ -232,11 +264,18 @@ bool UsbAccess::openDeviceWithDescription(std::string desc) {
 
       //Check if it matches
       if(desc==(const char*)buffer) {
-
-	TRACE("Target device found.");
 	
-	this->onSuccessfulOpen(devices[i]);
-	break;
+	if(currentIndex==index) {
+
+	  trace("Target device found.");
+	
+	  this->onSuccessfulOpen(devices[i]);
+	  break;
+
+	}
+
+	trace("Skipping matching device with at a different index.");
+	++currentIndex;
       
       }
       
@@ -250,9 +289,11 @@ bool UsbAccess::openDeviceWithDescription(std::string desc) {
 
   if(this->hDev==NULL) {
     
-    TRACE("No matching devices found");
+    trace("No matching devices found");
 
   }
+
+  this->openEpilogue();
  
   return (this->hDev!=NULL);
 
@@ -265,7 +306,7 @@ void UsbAccess::closeDevice() {
 
   assert(this->hDev!=NULL);
   libusb_close(this->hDev);
-
+  this->hDev = NULL;
 
 }
 

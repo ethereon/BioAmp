@@ -14,7 +14,7 @@
  <http://www.opensource.org/licenses/mit-license.html>
  
  ================================================================
- */
+*/
 
 #ifndef __AMP_PROTOCOL_H__
 #define __AMP_PROTOCOL_H__
@@ -61,5 +61,12 @@
 #define AMP_GET_MODE_REQUEST 0xcf
 #define AMP_GET_MODE_LENGTH 0x1
 
+//The value is the target channel
+#define AMP_SET_BANDPASS_REQUEST 0xc6
+#define AMP_SET_BANDPASS_LENGTH 0x90
+
+//The value is the target channel
+#define AMP_SET_NOTCH_REQUEST 0xc7
+#define AMP_SET_NOTCH_LENGTH 0x90
 
 #endif

@@ -1,11 +1,14 @@
 /*
-===============================================================================
-
+ ================================================================
+ 
  Common Amplifier Definitions
-
- Created by Saumitro Dasgupta, Dec 23 2009
-
-===============================================================================
+ The Myelin Project
+ 
+ Copyright (C) 2010 Saumitro Dasgupta.
+ This code is made available under the MIT License.
+ <http://www.opensource.org/licenses/mit-license.html>
+ 
+ ================================================================
 */
 
 #ifndef _AMPDEFS_H
