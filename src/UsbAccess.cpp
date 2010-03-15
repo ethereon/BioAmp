@@ -145,10 +145,6 @@ void UsbAccess::openEpilogue() {
 
 //-----------------------------------------------------------------------------
 
-
-
-//-----------------------------------------------------------------------------
-
 bool UsbAccess::onSuccessfulOpen(libusb_device* dev) {
 
   assert(this->hDev!=NULL);

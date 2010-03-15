@@ -210,8 +210,16 @@ string AmpLink::getSerial() {
 
 //-----------------------------------------------------------------------------
 
-double AmpLink::getImpedance(unsigned int channel) { 
-
+float AmpLink::calculateImpedance(float measuredAmplitude, float calibrationAmplitude) {
+	
+	float &U1 = measuredAmplitude;
+	
+	float &Ucal = calibrationAmplitude; //Default value = 1E4
+	
+	//Calculation based on equation in the g.USBAmp Manual v3.09a, page 24
+	
+	return ( ((U1*1E6)/(Ucal-U1))-1E4 );
+	
 }
 
 //-----------------------------------------------------------------------------
