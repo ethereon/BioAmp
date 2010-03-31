@@ -33,7 +33,7 @@ private:
 	
 	int verbosityLevel;
 	
-	bool isConnected;
+	bool isAmpConnected;
 	
 public:
 	
@@ -55,6 +55,9 @@ public:
 	
 	//Disconnect from the amplifier
 	void disconnect();
+
+	//Returns true if an active connection to the amp device exists
+	bool isConnected();
 	
 	//Set the sampling rate
 	void setSamplingRate(unsigned int argRate);

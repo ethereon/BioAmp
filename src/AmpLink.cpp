@@ -36,7 +36,7 @@ using namespace xinverse;
 AmpLink::AmpLink() {
 
 
-  isConnected = false;
+  isAmpConnected = false;
 
   this->amp.beginSession();
 
@@ -46,7 +46,7 @@ AmpLink::AmpLink() {
 
 AmpLink::~AmpLink() {
 
-  if(isConnected)
+  if(isAmpConnected)
     disconnect();
 
   amp.endSession();
@@ -61,7 +61,7 @@ bool AmpLink::connect(int index) {
 
     return false;
 
-  isConnected = true;
+  isAmpConnected = true;
   return true;
 
 }
@@ -70,10 +70,18 @@ bool AmpLink::connect(int index) {
 
 void AmpLink::disconnect() {
 
-  assert(isConnected);
+  assert(isAmpConnected);
 
   amp.closeDevice();
-  isConnected = false;
+  isAmpConnected = false;
+
+}
+
+//-----------------------------------------------------------------------------
+
+bool AmpLink::isConnected() {
+
+  return isAmpConnected;
 
 }
 
