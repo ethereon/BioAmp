@@ -259,7 +259,7 @@ bool UsbAccess::openDeviceWithDescription(std::string desc, int index) {
     if(libusb_get_string_descriptor_ascii(this->hDev, descriptor.iProduct, buffer, 1024)>0) {
 
       //Check if it matches
-      if(desc==(const char*)buffer) {
+		if(desc.compare((const char*)buffer)) {
 	
 	if(currentIndex==index) {
 
